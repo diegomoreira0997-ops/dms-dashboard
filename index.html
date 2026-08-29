@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="clean">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IES – Gestão de Carga Horária Docente</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="ld"><div class="sp2"></div></div>
+<div id="tc"></div>
+
+<!-- HEADER -->
+<header id="hdr">
+  <!-- Hambúrguer mobile -->
+  <button id="hdrMenu" onclick="toggleSidebar()" title="Abrir filtros" aria-label="Menu de filtros">
+    <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="logo-a">
+    <span id="logoImg" style="font-size:22px;font-weight:800;color:var(--p);letter-spacing:-1px">DMS</span>
+  </div>
+  <div class="hdr-divs"><span class="hdr-sub">Painel de Inteligência Acadêmica</span><span class="hdr-unit">Gestão de Carga Horária Docente</span></div>
+  <div class="sp"></div>
+  <div class="ha">
+    <!-- Chip de status — oculto até carregar arquivo -->
+    <div id="fileChip" style="display:none;align-items:center;gap:7px;
+      padding:4px 12px 4px 8px;border-radius:20px;
+      background:var(--green-dim);border:1px solid var(--green-mid);
+      font-size:11px;font-weight:600;color:var(--green);cursor:pointer"
+      onclick="document.getElementById('fi').click()"
+      title="Clique para trocar o arquivo">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span id="fst">—</span>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="opacity:.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+    </div>
+    <input type="file" id="fi" accept=".xlsx,.xls" />
+    <button class="btn bp" id="uploadBtn" onclick="document.getElementById('fi').click()" style="gap:6px">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span class="btn-label">Carregar Planilha</span>
+    </button>
+    <!-- Período e Data do Termo: ver #dashControls no dashboard -->
+    <!-- Dropdown de Exportação -->
+    <div class="exp-wrap" id="expWrap">
+      <button class="exp-btn" onclick="toggleExpMenu(event)">
+        ⬇ Exportar <span class="arrow">▼</span>
+      </button>
+      <div class="exp-menu" id="expMenu">
+        <button class="exp-item" onclick="expCSV();closeExpMenu()">
+          <span class="exp-icon">📊</span>
+          <span>CSV — Dados filtrados<span class="exp-desc">Abre no Excel/Sheets</span></span>
+        </button>
+        <button class="exp-item" onclick="expExcel();closeExpMenu()">
+          <span class="exp-icon">📗</span>
+          <span>Excel (.xlsx)<span class="exp-desc">Planilha formatada</span></span>
+        </button>
+        <div class="exp-divider"></div>
+        <button class="exp-item" onclick="expPDF();closeExpMenu()">
+          <span class="exp-icon">📄</span>
+          <span>PDF — Dashboard<span class="exp-desc">3 páginas, gráficos incluídos</span></span>
+        </button>
+        <button class="exp-item" onclick="gerarResumoTexto();closeExpMenu()">
+          <span class="exp-icon">📋</span>
+          <span>Resumo Executivo<span class="exp-desc">Copia para área de transferência</span></span>
+        </button>
+      </div>
+    </div>
+    <!-- NAV VISÕES -->
+    <div id="viewNav" style="display:none;align-items:center;gap:3px;margin-right:4px">
+      <button id="btnVoltarMenu" onclick="switchView('menu')" title="Voltar ao menu" style="display:none;align-items:center;gap:4px;padding:5px 11px;border-radius:var(--rad);border:1px solid var(--bb);background:var(--bi);color:#64748B;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .18s">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Menu
+      </button>
+    </div>
+    <button class="btn" id="bTermos" onclick="navigateTo('termos')" style="display:none;background:var(--o);color:#fff;font-weight:600">📋 Termos</button>
+    <button id="btnSobre" title="Sobre o painel" onclick="abrirSobre()" style="display:none">?</button>
+    <button class="tt" id="tBtn" title="Alternar tema" onclick="togTheme()">🌙</button>
+  </div>
+</header>
+
+<!-- METADATA BAR -->
+<div id="metadataPanel">
+  <div class="meta-item">
+    <div class="meta-pulse"></div>
+    <span>Dados carregados em: <strong id="metaLoadedAt">—</strong></span>
+  </div>
+  <div class="meta-item">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="3"/></svg>
+    <span><strong id="metaRegistros">0</strong> registros</span>
+  </div>
+  <div class="meta-item">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span><strong id="metaDocentes">0</strong> docentes</span>
+  </div>
+  <div class="meta-item">
+    <svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+    <span><strong id="metaCursos">0</strong> cursos</span>
+  </div>
+  <div class="meta-item">
+    <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    <span><strong id="metaDisciplinas">0</strong> disciplinas</span>
+  </div>
+  <div class="meta-item" style="margin-left:auto;border-right:none;padding-right:0">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <span>Período: <strong id="metaPeriodo">—</strong></span>
+  </div>
+</div>
+
+<!-- Overlay drawer mobile -->
+<div id="sbOverlay" onclick="closeSidebar()"></div>
+
+<!-- LAYOUT -->
+<div id="lay">
+
+  <!-- SIDEBAR — oculta até carregar dados e estar na visão Operacional -->
+  <aside id="sb" style="display:none">
+    <div class="sbt"><span>🔍 Filtros</span><span class="active-filters-count" id="activeFiltersCount"></span></div>
+    <div class="fg"><label class="fl">Modalidade</label>
+      <select id="fMod" class="fs" onchange="cascadeF()"><option value="">Todas</option></select></div>
+    <div class="fg"><label class="fl">Curso</label>
+      <select id="fCur" class="fs" onchange="applyF()"><option value="">Todos</option></select></div>
+    <div class="fg"><label class="fl">Escola / Área</label>
+      <select id="fEsc" class="fs" onchange="applyF()"><option value="">Todas</option></select></div>
+    <div class="fg"><label class="fl">Professor</label>
+      <select id="fPro" class="fs" onchange="applyF()"><option value="">Todos</option></select></div>
+    <div class="fg"><label class="fl">Tipo de Hora</label>
+      <select id="fTH" class="fs" onchange="applyF()"><option value="">Todos</option></select></div>
+    <div class="fg"><label class="fl">Tipo Cod</label>
+      <select id="fTC" class="fs" onchange="applyF()"><option value="">Todos</option></select></div>
+    <div class="dv"></div>
+    <div class="fg"><label class="fl">CH Semanal (min – max)</label>
+      <div class="fr">
+        <input type="number" id="fChMi" class="fn" placeholder="Min" step="0.5" onchange="applyFDebounced()" />
+        <input type="number" id="fChMa" class="fn" placeholder="Max" step="0.5" onchange="applyFDebounced()" />
+      </div></div>
+    <div class="fg"><label class="fl">Hora Aula (min – max)</label>
+      <div class="fr">
+        <input type="number" id="fHaMi" class="fn" placeholder="Min" step="0.01" onchange="applyF()" />
+        <input type="number" id="fHaMa" class="fn" placeholder="Max" step="0.01" onchange="applyF()" />
+      </div></div>
+    <div class="fg"><label class="fl">Data Início (a partir de)</label>
+      <input type="date" id="fDI" class="fn" onchange="applyF()" /></div>
+    <div class="fg"><label class="fl">Data Fim (até)</label>
+      <input type="date" id="fDF" class="fn" onchange="applyF()" /></div>
+    <button class="bcl" onclick="clearF()">✕ Limpar Filtros</button>
+  </aside>
+
+  <button id="sbToggle" onclick="toggleSidebar()" title="Filtros">⚙</button>
+
+  <!-- MAIN -->
+  <main id="mn">
+
+    <!-- EMPTY STATE -->
+    <div id="es">
+      <div class="uz" id="uz" onclick="document.getElementById('fi').click()">
+        <!-- Ícone animado -->
+        <div class="uz-icon">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="8" width="36" height="32" rx="4" opacity=".25"/>
+            <rect x="10" y="4" width="28" height="32" rx="3"/>
+            <line x1="17" y1="14" x2="31" y2="14" opacity=".5"/>
+            <line x1="17" y1="20" x2="31" y2="20" opacity=".5"/>
+            <line x1="17" y1="26" x2="24" y2="26" opacity=".5"/>
+            <circle cx="36" cy="34" r="8" fill="var(--bc)" stroke-width="1.5"/>
+            <polyline points="33,34 36,31 39,34"/>
+            <line x1="36" y1="31" x2="36" y2="38"/>
+          </svg>
+        </div>
+        <h2 class="uz-title">Painel de Inteligência Acadêmica</h2>
+        <p class="uz-sub">Importe o arquivo <strong>Formulário Horas Docente – Preenchido.xlsx</strong><br/>para iniciar a análise de carga horária docente.</p>
+        <button class="btn bp uz-btn" onclick="event.stopPropagation();document.getElementById('fi').click()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+          Selecionar Arquivo .xlsx
+        </button>
+        <div class="uz-features">
+          <span class="uz-feat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3,8 6,12 13,4"/></svg>91 funções de análise</span>
+          <span class="uz-feat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3,8 6,12 13,4"/></svg>Gráficos interativos</span>
+          <span class="uz-feat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3,8 6,12 13,4"/></svg>Exportação PDF & Excel</span>
+          <span class="uz-feat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3,8 6,12 13,4"/></svg>Termos Aditivos automáticos</span>
+        </div>
+      </div>
+      <p class="uz-privacy">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Dados processados localmente — nenhum arquivo é enviado a servidores.
+      </p>
+    </div>
+
+    <!-- SKELETON LOADING -->
+    <div id="skl">
+      <div id="skLoadBar" style="height:3px;background:var(--bb);border-radius:2px;margin-bottom:12px;overflow:hidden">
+        <div id="skLoadFill" style="height:100%;width:0%;background:var(--o);border-radius:2px;transition:width .3s ease"></div>
+      </div>
+      <div class="sk-row r5"><div class="sk sk-kpi"></div><div class="sk sk-kpi"></div><div class="sk sk-kpi"></div><div class="sk sk-kpi"></div><div class="sk sk-kpi"></div></div>
+      <div class="sk-row r4"><div class="sk sk-kpi"></div><div class="sk sk-kpi"></div><div class="sk sk-kpi"></div><div class="sk sk-kpi"></div></div>
+      <div class="sk-row r2"><div class="sk sk-chart"></div><div class="sk sk-chart"></div></div>
+      <div class="sk-row r2"><div class="sk sk-chart"></div><div class="sk sk-chart"></div></div>
+      <div class="sk sk-tbl"></div>
+    </div>
+
+    <!-- CROSS-FILTER BANNER -->
+    <div id="cfBanner">
+      <span style="font-size:14px">🎯</span>
+      <span>Filtro ativo:</span> <strong id="cfLabel">—</strong>
+      <span style="color:var(--m);font-size:10px">· clique na mesma barra para desfazer</span>
+      <button id="cfClear" onclick="clearCF()">✕ Limpar</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dash" class="hid">
+
+      <!-- Controles de semestre e data do termo (aparecem após carregar dados) -->
+      <div id="dashControls" style="display:none;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px;background:var(--bi);border:1px solid var(--bb);border-radius:var(--rad);margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:10px;color:var(--m);font-weight:600;white-space:nowrap">📅 Semestre</label>
+          <select id="periodoSel" onchange="A.periodo=this.value"
+            style="font-family:var(--font-body);font-size:11px;padding:5px 9px;border-radius:var(--rad);
+                   border:1px solid var(--bb);background:var(--bc);color:var(--t);cursor:pointer;outline:none">
+          </select>
+        </div>
+        <div id="periodoWrap" style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:10px;color:var(--m);font-weight:600;white-space:nowrap">📋 Data do Termo Aditivo</label>
+          <input type="date" id="termoDate"
+            style="font-family:var(--font-body);font-size:11px;padding:5px 9px;border-radius:var(--rad);
+                   border:1px solid var(--bb);background:var(--bc);color:var(--t);cursor:pointer;outline:none"
+            onchange="A.dataTermo=this.value"
+            title="Data que aparecerá nos Termos Aditivos gerados" />
+        </div>
+        <div id="termoDateWrap" style="display:flex;align-items:center;gap:6px;display:none"><!-- compat alias --></div>
+      </div>
+
+      <!-- BARRA DE AÇÕES RÁPIDAS -->
+      <div class="dash-actions" id="dashActions" style="display:none">
+        <button class="dash-action-btn primary" onclick="expPDF()">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Exportar PDF
+        </button>
+        <button class="dash-action-btn" onclick="expExcel()">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><rect x="8" y="13" width="8" height="6"/></svg>
+          Excel Filtrado
+        </button>
+        <button class="dash-action-btn" onclick="expCSV()">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          CSV
+        </button>
+        <button class="dash-action-btn" onclick="gerarResumoTexto()">
+          <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+          Resumo Executivo
+        </button>
+        <span style="margin-left:auto;font-size:10px;color:var(--m)" id="dashActionsInfo"></span>
+      </div>
+
+      <!-- RESUMO EXECUTIVO DA CARGA HORÁRIA -->
+      <div id="resumoExecutivo">
+        <div class="re-header">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--orange)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span class="re-title">Resumo Executivo da Carga Horária</span>
+          <span class="re-badge" id="reBadge">—</span>
+        </div>
+        <div class="re-text" id="reText">Carregando análise...</div>
+        <div class="re-pills" id="rePills"></div>
+      </div>
+
+      <!-- INSIGHTS DA GESTÃO -->
+      <div id="insightsPanel">
+        <div class="insights-header">
+          <span class="insights-title">Insights da Gestão</span>
+          <span class="insights-refresh" id="insightsTs">—</span>
+        </div>
+        <div class="insights-grid" id="insightsGrid"></div>
+      </div>
+
+      <!-- SEC TITLE: Alertas Acadêmicos (faz parte do #dash mas antes da seção Análise Financeira) -->
+      <div id="alertasInteligentes">
+        <div class="insights-header">
+          <span class="insights-title">Alertas Acadêmicos</span>
+          <span class="insights-refresh" id="alertasTs">—</span>
+        </div>
+        <div class="alerta-faixas" id="alertaFaixas"></div>
+        <div class="af-profs" id="alertaProfs" style="display:none">
+          <div class="af-profs-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Docentes que requerem atenção
+          </div>
+          <div class="af-list" id="alertaList"></div>
+        </div>
+      </div>
+
+      <!-- SUMÁRIO EXECUTIVO -->
+      <div id="execSummary" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+          <span style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.8px">
+            Sumário de Filtros Ativos
+          </span>
+          <span style="font-size:10px;color:var(--m)" id="execPeriodo">—</span>
+        </div>
+        <div class="exec-grid" id="execGrid"></div>
+      </div>
+
+      
+<div id="viewMenu" style="display:none;align-items:center;justify-content:center;text-align:center">
+  <div class="vmenu-title" id="vmenuTitle" style="font-size:18px;font-weight:700;color:#1E293B;text-align:center">Bem-vindo ao DMS Dashboard</div>
+  <div class="vmenu-sub" id="vmenuSub" style="font-size:13px;color:#64748B;text-align:center;margin-top:-12px">Selecione a visão que deseja acessar</div>
+
+  <div class="vmenu-info" id="vmenuInfo" style="display:flex;align-items:center;gap:6px;background:#F1F5F9;border:1px solid #E2E8F0;border-radius:20px;padding:4px 14px;font-size:11px;color:#64748B">
+    <span class="vmenu-info-dot" style="width:6px;height:6px;border-radius:50%;background:#0DAA63;flex-shrink:0;display:inline-block"></span>
+    <span id="vmenuInfoTxt">dados carregados</span>
+  </div>
+
+  <div class="vmenu-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;width:100%;max-width:820px;margin:0 auto">
+
+    <!-- Executivo -->
+    <div class="vmenu-card green" onclick="switchView('executivo')" style="background:#fff;border:2px solid #E2E8F0;border-radius:14px;padding:28px 20px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;text-align:center;position:relative;overflow:hidden;transition:all .2s">
+      <div class="vmenu-icon" style="width:56px;height:56px;border-radius:14px;background:rgba(245,138,31,.08);display:flex;align-items:center;justify-content:center;margin-bottom:4px">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F58A1F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <line x1="8" y1="21" x2="16" y2="21"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+          <polyline points="7 10 10 7 13 10 17 6"/>
+        </svg>
+      </div>
+      <div class="vmenu-name" style="font-size:14px;font-weight:700;color:#1E293B">Executivo</div>
+      <div class="vmenu-desc" style="font-size:12px;color:#64748B;line-height:1.5">Visão estratégica para Reitoria e Direção — resultados em 30 segundos</div>
+      <div class="vmenu-tags">
+        <span class="vmenu-tag" style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;background:rgba(245,138,31,.10);color:#F58A1F;white-space:nowrap">Custo total</span>
+        <span class="vmenu-tag" style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;background:rgba(245,138,31,.10);color:#F58A1F;white-space:nowrap">Orçado vs Real</span>
+        <span class="vmenu-tag" style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;background:rgba(245,138,31,.10);color:#F58A1F;white-space:nowrap">Riscos legais</span>
+      </div>
+    </div>
+
+    <!-- Operacional -->
+    <div class="vmenu-card blue" onclick="switchView('operacional')" style="background:#fff;border:2px solid #E2E8F0;border-radius:14px;padding:28px 20px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;text-align:center;position:relative;overflow:hidden;transition:all .2s">
+      <div class="vmenu-icon" style="width:56px;height:56px;border-radius:14px;background:rgba(245,138,31,.08);display:flex;align-items:center;justify-content:center;margin-bottom:4px">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+             stroke="#F58A1F" stroke-width="1.6" stroke-linecap="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
+      <div class="vmenu-name" style="font-size:14px;font-weight:700;color:#1E293B">Operacional</div>
+      <div class="vmenu-desc" style="font-size:12px;color:#64748B;line-height:1.5">Análise completa para Coordenação e Gestão Acadêmica</div>
+      <div class="vmenu-tags">
+        <span class="vmenu-tag" style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;background:rgba(245,138,31,.10);color:#F58A1F;white-space:nowrap">KPIs detalhados</span>
+        <span class="vmenu-tag" style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;background:rgba(245,138,31,.10);color:#F58A1F;white-space:nowrap">Gráficos</span>
+        <span class="vmenu-tag" style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;background:rgba(245,138,31,.10);color:#F58A1F;white-space:nowrap">Tabela</span>
+        <span class="vmenu-tag" style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;background:rgba(245,138,31,.10);color:#F58A1F;white-space:nowrap">Filtros</span>
+      </div>
+    </div>
+
+    <!-- Orçamento -->
+    <div class="vmenu-card purple" onclick="switchView('orcamento')" style="background:#fff;border:2px solid #E2E8F0;border-radius:14px;padding:28px 20px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;text-align:center;position:relative;overflow:hidden;transition:all .2s">
+      <div class="vmenu-icon" style="width:56px;height:56px;border-radius:14px;background:rgba(245,138,31,.08);display:flex;align-items:center;justify-content:center;margin-bottom:4px">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F58A1F" stroke-width="1.6" stroke-linecap="round">
+          <line x1="12" y1="1" x2="12" y2="23"/>
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+      </div>
+      <div class="vmenu-name" style="font-size:14px;font-weight:700;color:#1E293B">Orçamento</div>
+      <div class="vmenu-desc" style="font-size:12px;color:#64748B;line-height:1.5">Orçado vs Realizado por curso — acompanhamento financeiro detalhado</div>
+      <div class="vmenu-tags">
+        <span class="vmenu-tag" style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;background:rgba(245,138,31,.10);color:#F58A1F;white-space:nowrap">Por curso</span>
+        <span class="vmenu-tag" style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;background:rgba(245,138,31,.10);color:#F58A1F;white-space:nowrap">Desvio</span>
+        <span class="vmenu-tag" style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;background:rgba(245,138,31,.10);color:#F58A1F;white-space:nowrap">Semáforo</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="viewExecutivo" style="display:none;flex-direction:column;gap:16px;padding:20px;width:100%">
+
+  <!-- HERO CARDS -->
+  <div class="exec-hero-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%">
+    <div class="exec-hero green" style="background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:22px 20px 18px;box-shadow:0 1px 4px rgba(15,23,42,.06);display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden;border-top:3px solid #0DAA63">
+      <div class="exec-hero-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+      <div class="exec-hero-label">Total Bruto Mensal</div>
+      <div class="exec-hero-val" id="eHeroCusto">—</div>
+      <div class="exec-hero-sub">custo estimado do quadro docente</div>
+      <div class="exec-hero-badge ok" id="eHeroCustoBadge">calculando...</div>
+    </div>
+    <div class="exec-hero orange" id="eHeroOrcCard" style="background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:22px 20px 18px;box-shadow:0 1px 4px rgba(15,23,42,.06);display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden;border-top:3px solid #F58A1F">
+      <div class="exec-hero-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+      <div class="exec-hero-label">Orçado vs Realizado</div>
+      <div class="exec-hero-val" id="eHeroOrcDelta">—</div>
+      <div class="exec-hero-sub" id="eHeroOrcSub">carregue a aba Orçamento</div>
+      <div class="exec-hero-badge warn" id="eHeroOrcBadge">sem dados</div>
+    </div>
+    <div class="exec-hero red" style="background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:22px 20px 18px;box-shadow:0 1px 4px rgba(15,23,42,.06);display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden;border-top:3px solid #E35D6A">
+      <div class="exec-hero-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div class="exec-hero-label">Professores em Risco Legal</div>
+      <div class="exec-hero-val" id="eHeroRisco">—</div>
+      <div class="exec-hero-sub">acima de 40h/sem (limite CLT)</div>
+      <div class="exec-hero-badge" id="eHeroRiscoBadge">calculando...</div>
+    </div>
+  </div>
+
+  <!-- KPIs SECUNDÁRIOS -->
+  <div class="exec-kpi-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%">
+    <div class="exec-kpi" style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column;gap:3px">
+      <div class="exec-kpi-label">Professores Ativos</div>
+      <div class="exec-kpi-val" id="eKpiProfessores">—</div>
+      <div class="exec-kpi-sub">no período selecionado</div>
+    </div>
+    <div class="exec-kpi" style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column;gap:3px">
+      <div class="exec-kpi-label">Cursos</div>
+      <div class="exec-kpi-val" id="eKpiCursos">—</div>
+      <div class="exec-kpi-sub">com carga alocada</div>
+    </div>
+    <div class="exec-kpi" style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column;gap:3px">
+      <div class="exec-kpi-label">CH Média por Docente</div>
+      <div class="exec-kpi-val" id="eKpiMediaCH">—</div>
+      <div class="exec-kpi-sub">horas/semana</div>
+    </div>
+    <div class="exec-kpi" style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column;gap:3px">
+      <div class="exec-kpi-label">Quadro Saudável</div>
+      <div class="exec-kpi-val" id="eKpiSaudavel">—</div>
+      <div class="exec-kpi-sub">docentes até 30h/sem</div>
+    </div>
+  </div>
+
+  <!-- GRÁFICOS -->
+  <div class="exec-charts-grid">
+    <div class="exec-chart-card">
+      <div class="exec-chart-title">
+        <span class="exec-chart-dot" style="background:var(--o)"></span>
+        Custo Mensal por Curso (Top 10)
+      </div>
+      <div class="cw"><canvas id="eChartCusto"></canvas></div>
+    </div>
+    <div class="exec-chart-card">
+      <div class="exec-chart-title">
+        <span class="exec-chart-dot" style="background:var(--g)"></span>
+        Carga Horária por Curso (Top 10)
+      </div>
+      <div class="cw"><canvas id="eChartCH"></canvas></div>
+    </div>
+  </div>
+
+  <!-- BARRA DE FAIXAS -->
+  <div class="exec-faixas">
+    <div class="exec-faixas-title">Distribuição do Quadro por Faixa de CH</div>
+    <div class="exec-faixas-bar" id="eFaixasBar">
+      <div class="exec-faixas-seg" id="eFaixaSaudavel" style="background:#0DAA63;width:0%"></div>
+      <div class="exec-faixas-seg" id="eFaixaAtencao"  style="background:#F58A1F;width:0%"></div>
+      <div class="exec-faixas-seg" id="eFaixaAlerta"   style="background:#E35D6A;width:0%"></div>
+      <div class="exec-faixas-seg" id="eFaixaCritico"  style="background:#7C3AED;width:0%"></div>
+    </div>
+    <div class="exec-faixas-legend">
+      <div class="exec-faixas-item">
+        <div class="exec-faixas-dot" style="background:#0DAA63"></div>
+        <span id="eLegSaudavel">Saudável (até 30h) — 0</span>
+      </div>
+      <div class="exec-faixas-item">
+        <div class="exec-faixas-dot" style="background:#F58A1F"></div>
+        <span id="eLegAtencao">Atenção (30–36h) — 0</span>
+      </div>
+      <div class="exec-faixas-item">
+        <div class="exec-faixas-dot" style="background:#E35D6A"></div>
+        <span id="eLegAlerta">Alerta (36–40h) — 0</span>
+      </div>
+      <div class="exec-faixas-item">
+        <div class="exec-faixas-dot" style="background:#7C3AED"></div>
+        <span id="eLegCritico">Crítico (>40h) — 0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALERTAS DE RISCO -->
+  <div class="exec-alerts">
+    <div class="exec-alerts-header">
+      <div class="exec-alerts-title">
+        ⚠️ Alertas de Risco — Docentes Acima do Limite Legal
+        <span class="exec-alerts-pill" id="eAlertsPill">0</span>
+      </div>
+    </div>
+    <div id="eAlertsList">
+      <div class="exec-empty">Carregue uma planilha para ver os alertas.</div>
+    </div>
+  </div>
+
+  <!-- RODAPÉ EXECUTIVO -->
+  <div class="exec-footer">
+    <button class="btn bs" onclick="switchView('operacional')">
+      Ver Análise Completa →
+    </button>
+    <button class="btn bs" id="eBtnExpPDF" onclick="expPDF()" style="display:none">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Exportar PDF Executivo
+    </button>
+  </div>
+</div>
+
+<div id="viewOrcamento" style="display:none">
+
+  <!-- KPIs de orçamento — Financeiro -->
+  <div class="exec-chart-title" id="orcSecFin" style="display:none">
+    <span class="exec-chart-dot" style="background:#8B5CF6"></span>
+    Financeiro
+  </div>
+  <div class="exec-kpi-grid" id="orcKpiGrid" style="display:none">
+    <div class="exec-kpi" style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column;gap:3px">
+      <div class="exec-kpi-label">Total Orçado</div>
+      <div class="exec-kpi-val" id="orcTotalOrc">—</div>
+      <div class="exec-kpi-sub">soma dos cursos planejados</div>
+    </div>
+    <div class="exec-kpi" style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column;gap:3px">
+      <div class="exec-kpi-label">Total Realizado</div>
+      <div class="exec-kpi-val" id="orcTotalReal">—</div>
+      <div class="exec-kpi-sub">custo calculado atual</div>
+    </div>
+    <div class="exec-kpi" style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column;gap:3px">
+      <div class="exec-kpi-label">Desvio de Custo</div>
+      <div class="exec-kpi-val" id="orcDesvio">—</div>
+      <div class="exec-kpi-sub">realizado − orçado</div>
+    </div>
+    <div class="exec-kpi" style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column;gap:3px">
+      <div class="exec-kpi-label">Cursos no Limite</div>
+      <div class="exec-kpi-val" id="orcCursosOk">—</div>
+      <div class="exec-kpi-sub">dentro do orçamento (custo)</div>
+    </div>
+  </div>
+
+  <!-- KPIs de orçamento — Carga Horária (CH) -->
+  <div class="exec-chart-title" id="orcSecCH" style="display:none;margin-top:4px">
+    <span class="exec-chart-dot" style="background:#0891B2"></span>
+    Carga Horária (CH)
+  </div>
+  <div class="exec-kpi-grid" id="orcKpiGridCH" style="display:none;grid-template-columns:repeat(3,1fr)">
+    <div class="exec-kpi" style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column;gap:3px">
+      <div class="exec-kpi-label">CH Orçada Total</div>
+      <div class="exec-kpi-val" id="orcChTotalOrc">—</div>
+      <div class="exec-kpi-sub">soma da CH prevista</div>
+    </div>
+    <div class="exec-kpi" style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column;gap:3px">
+      <div class="exec-kpi-label">CH Realizada Total</div>
+      <div class="exec-kpi-val" id="orcChTotalReal">—</div>
+      <div class="exec-kpi-sub">soma da CH calculada atual</div>
+    </div>
+    <div class="exec-kpi" style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column;gap:3px">
+      <div class="exec-kpi-label">Desvio de CH</div>
+      <div class="exec-kpi-val" id="orcChDesvio">—</div>
+      <div class="exec-kpi-sub">realizada − prevista</div>
+    </div>
+  </div>
+
+  <!-- Gráfico comparativo — Custo -->
+  <div class="exec-chart-card" id="orcChartCard" style="display:none">
+    <div class="exec-chart-title">
+      <span class="exec-chart-dot" style="background:#8B5CF6"></span>
+      Custo — Orçado vs Realizado por Curso
+    </div>
+    <div class="cw"><canvas id="eChartOrc"></canvas></div>
+  </div>
+
+  <!-- Gráfico comparativo — CH -->
+  <div class="exec-chart-card" id="orcChartCardCH" style="display:none">
+    <div class="exec-chart-title">
+      <span class="exec-chart-dot" style="background:#0891B2"></span>
+      CH — Orçada vs Realizada por Curso
+    </div>
+    <div class="cw"><canvas id="eChartOrcCH"></canvas></div>
+  </div>
+
+  <!-- Tabela de orçamento -->
+  <div class="orc-table-wrap" id="orcTableWrap" style="display:none">
+    <table class="orc-table" id="orcTable">
+      <thead>
+        <tr>
+          <th>Curso</th>
+          <th>Modalidade</th>
+          <th style="text-align:right">CH Orçada</th>
+          <th style="text-align:right">CH Realizada</th>
+          <th style="text-align:right">Custo Orçado</th>
+          <th style="text-align:right">Custo Realizado</th>
+          <th style="text-align:right">Desvio</th>
+          <th style="text-align:center">Status</th>
+        </tr>
+      </thead>
+      <tbody id="orcTableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Estado vazio -->
+  <div class="orc-empty" id="orcEmpty">
+    <h3>Aba de Orçamento não encontrada</h3>
+    <p>
+      Para usar esta visão, adicione uma aba chamada <code>Orcamento</code> na planilha com as colunas:<br/><br/>
+      <code>Curso</code> &nbsp;|&nbsp; <code>Modalidade</code> &nbsp;|&nbsp;
+      <code>CH Prevista</code> &nbsp;|&nbsp; <code>Valor Orcado</code><br/><br/>
+      O sistema comparará automaticamente com o custo realizado calculado pelo painel.
+    </p>
+  </div>
+
+</div>
+
+<!-- VISÃO OPERACIONAL — Gestão Acadêmica e Coordenação -->
+      <div id="dash-operacional" style="display:none;flex-direction:column;gap:var(--section-gap-sm,18px)">
+
+      <!-- SEÇÃO: Indicadores Operacionais -->
+      <div class="sec-title" style="--st-accent:var(--blue)"><div class="sec-dot" style="background:var(--blue)"></div><h2>Carga Horária — Visão Geral</h2></div>
+
+      <!-- KPIs -->
+
+        <!-- Linha 1 · Operacional -->
+        <div class="kr-row op">
+          <div class="kc" style="--ka:var(--blue);--ka-dim:var(--blue-dim)"><div class="kc-icon" style="background:var(--blue-dim)"><svg viewBox="0 0 24 24" style="stroke:var(--blue)"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            <div class="kl">CH Total Semanal</div>
+            <div class="kv" id="kCH">0</div>
+            <div class="ks">horas / semana</div></div>
+
+          <div class="kc" style="--ka:var(--green);--ka-dim:var(--green-dim)"><div class="kc-icon" style="background:var(--green-dim)"><svg viewBox="0 0 24 24" style="stroke:var(--green)"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+            <div class="kl">CH Ensino</div>
+            <div class="kv sm" id="kChEns">0</div>
+            <div class="ks">horas / semana</div></div>
+
+          <div class="kc" style="--ka:var(--cyan,#0891B2);--ka-dim:var(--cyan-dim,rgba(8,145,178,.12))"><div class="kc-icon" style="background:var(--cyan-dim,rgba(8,145,178,.12))"><svg viewBox="0 0 24 24" style="stroke:var(--cyan,#0891B2)"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+            <div class="kl">CH Atividades Compl.</div>
+            <div class="kv sm" id="kChEv">0</div>
+            <div class="ks">estágio, TCC, RT, PIEX…</div></div>
+
+          <div class="kc" style="--ka:var(--blue);--ka-dim:var(--blue-dim)"><div class="kc-icon" style="background:var(--blue-dim)"><svg viewBox="0 0 24 24" style="stroke:var(--blue)"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            <div class="kl">Professores</div>
+            <div class="kv" id="kPr">0</div>
+            <div class="ks">distintos</div></div>
+
+          <div class="kc" style="--ka:var(--purple,#7C3AED);--ka-dim:var(--purple-dim,rgba(124,58,237,.12))"><div class="kc-icon" style="background:var(--purple-dim,rgba(124,58,237,.12))"><svg viewBox="0 0 24 24" style="stroke:var(--purple,#7C3AED)"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+            <div class="kl">Cursos</div>
+            <div class="kv" id="kCu">0</div>
+            <div class="ks">distintos</div></div>
+
+          <div class="kc"><div class="kc-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+            <div class="kl">Disciplinas</div>
+            <div class="kv" id="kDi">0</div>
+            <div class="ks">distintas</div></div>
+
+          <div class="kc al" id="kAC"><div class="kc-icon" style="background:var(--orange-dim)"><svg viewBox="0 0 24 24" style="stroke:var(--orange)"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+            <div class="kl">Alertas CH &gt;40h</div>
+            <div class="kv" id="kAl">0</div>
+            <div class="ks">docentes acima do limite</div></div>
+        </div>
+
+        <!-- Linha 2 · Financeiro -->
+        <div class="kr-row fn">
+          <div class="kc" style="--ka:var(--green);--ka-dim:var(--green-dim)"><div class="kc-icon" style="background:var(--green-dim)"><svg viewBox="0 0 24 24" style="stroke:var(--green)"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+            <div class="kl">Base Mensal</div>
+            <div class="kv sm" id="kBase">R$ 0</div>
+            <div class="ks">CH × 4,5 × Hora Aula</div></div>
+
+          <div class="kc" style="--ka:var(--orange);--ka-dim:var(--orange-dim)"><div class="kc-icon" style="background:var(--orange-dim)"><svg viewBox="0 0 24 24" style="stroke:var(--orange)"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+            <div class="kl">DSR</div>
+            <div class="kv sm" id="kDsr">R$ 0</div>
+            <div class="kfrow"><span class="kbadge">16,67%</span><span class="ks" style="margin:0">sobre base</span></div></div>
+
+          <div class="kc" style="--ka:var(--blue);--ka-dim:var(--blue-dim)"><div class="kc-icon" style="background:var(--blue-dim)"><svg viewBox="0 0 24 24" style="stroke:var(--blue)"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></div>
+            <div class="kl">Hora Atividade</div>
+            <div class="kv sm" id="kHAtv">R$ 0</div>
+            <div class="kfrow"><span class="kbadge b">12%</span><span class="ks" style="margin:0">sobre base + DSR</span></div></div>
+
+          <div class="kc hero"><div class="kc-icon" style="background:var(--green-dim)"><svg viewBox="0 0 24 24" style="stroke:var(--green)"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+            <div class="kl">Total Bruto Mensal</div>
+            <div class="kv lg" id="kCo">R$ 0</div>
+            <div class="kfrow">
+              <span class="kbadge g">= Base + DSR + H.Ativ.</span>
+            </div></div>
+        </div>
+
+
+        <!-- SEÇÃO: Indicadores Estratégicos -->
+        <div class="sec-title" style="margin-top:20px">
+          <div class="sec-dot" style="background:var(--purple,#7C3AED)"></div>
+          <h2>Gestão Estratégica</h2>
+          <span class="sec-count" id="secStCount" style="display:none"></span>
+        </div>
+        <div id="krEst">
+        <div class="kr-row st" id="krSt">
+
+          <div class="kc" style="--ka:var(--green);--ka-dim:var(--green-dim)" data-tip>
+            <div class="kc-icon" style="background:var(--green-dim)">
+              <svg viewBox="0 0 24 24" style="stroke:var(--green)"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div class="kl">Média CH por Docente</div>
+            <div class="kv sm" id="kMediaCH">0</div>
+            <div class="ks">horas/semana por professor</div>
+            <span class="kc-trend neu" id="kMediaCHTrend">— referência: 20h</span>
+            <div class="kc-tip">Média de carga horária semanal de ensino por docente ativo. Benchmark saudável: entre 12h e 24h/sem.</div>
+          </div>
+
+          <div class="kc" style="--ka:var(--red);--ka-dim:var(--red-dim)" data-tip>
+            <div class="kc-icon" style="background:var(--red-dim)">
+              <svg viewBox="0 0 24 24" style="stroke:var(--red)"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="kl">Docentes Acima de 40h</div>
+            <div class="kv sm" id="kAcima40">0</div>
+            <div class="ks">acima do limite recomendado</div>
+            <span class="kc-trend neu" id="kAcima40Pct">0% do quadro</span>
+            <div class="kc-tip">Docentes com carga horária de ensino semanal acima de 40h. Esse indicador sinaliza risco de sobrecarga e burnout.</div>
+          </div>
+
+          <div class="kc" style="--ka:var(--orange);--ka-dim:var(--orange-dim)" data-tip>
+            <div class="kc-icon" style="background:var(--orange-dim)">
+              <svg viewBox="0 0 24 24" style="stroke:var(--orange)"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            </div>
+            <div class="kl">Curso Maior Custo</div>
+            <div class="kv sm" id="kCursoCusto" style="font-size:12px;line-height:1.2">—</div>
+            <div class="ks" id="kCursoCustoVal">R$ 0</div>
+            <span class="kc-trend neu" id="kCursoCustoPct">0% do total</span>
+            <div class="kc-tip">Curso com maior custo bruto mensal estimado (soma de Base + DSR + Hora Atividade de todos os docentes).</div>
+          </div>
+
+          <div class="kc" style="--ka:var(--green);--ka-dim:var(--green-dim)" data-tip>
+            <div class="kc-icon" style="background:var(--green-dim)">
+              <svg viewBox="0 0 24 24" style="stroke:var(--green)"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div class="kl">Docentes em CH Saudável</div>
+            <div class="kv sm" id="kSaudavel">0%</div>
+            <div class="ks">até 30h/sem (carga equilibrada)</div>
+            <span class="kc-trend neu" id="kSaudavelTrend">— docentes</span>
+            <div class="kc-tip">Percentual de docentes com carga horária de ensino até 30h/semana — considerado nível saudável e sustentável.</div>
+          </div>
+
+        </div>
+
+        </div><!-- /#krEst -->
+
+        <!-- #kr continua para o Orçado vs Realizado -->
+        <div id="kr2">
+        <!-- Linha 3 · Orçado vs Realizado -->
+        <div class="kr-row" id="krOV" style="grid-template-columns:1fr;display:none">
+          <div class="kc ov-g" id="kOVCard"><div class="ki">📊</div>
+            <div class="kl">Orçado vs Realizado</div>
+            <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:2px">
+              <div><div style="font-size:9px;color:var(--m);margin-bottom:2px">ORÇADO</div>
+                <div class="kv sm" id="kOrcado" style="color:var(--m)">—</div></div>
+              <div style="font-size:24px;color:var(--bb)">→</div>
+              <div><div style="font-size:9px;color:var(--m);margin-bottom:2px">REALIZADO</div>
+                <div class="kv sm" id="kRealizado">—</div></div>
+              <div style="margin-left:auto;text-align:right">
+                <div style="font-size:9px;color:var(--m);margin-bottom:2px">VARIAÇÃO</div>
+                <div class="ov-delta eq" id="kOVDelta">—</div>
+                <div style="font-size:9px;color:var(--m)" id="kOVSub">sem dados de orçamento</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /#kr2 -->
+
+      <!-- SEÇÃO: Visualização de Dados — ABAS NAVEGÁVEIS -->
+      <div class="sec-title" style="--st-accent:var(--green)">
+        <div class="sec-dot" style="background:var(--green)"></div>
+        <h2>Análise Visual</h2>
+        <span class="sec-count">7 gráficos</span>
+      </div>
+
+      <!-- ╔══════════════════════════════════════════════════════════╗
+           ║  CHART VIEWER — navegação por abas, altura uniforme     ║
+           ╚══════════════════════════════════════════════════════════╝ -->
+      <div class="chart-viewer" id="chartViewer">
+
+        <!-- Barra de abas + setas prev/next -->
+        <div class="cv-tabs" id="cvTabs">
+          <div class="cv-tabs-scroll">
+            <button class="cv-tab active" data-tab="0" onclick="switchChartTab(0)"><span class="cv-dot" style="background:var(--g)"></span>Por Curso</button>
+            <button class="cv-tab" data-tab="1" onclick="switchChartTab(1)"><span class="cv-dot" style="background:var(--o)"></span>Por Professor</button>
+            <button class="cv-tab" data-tab="2" onclick="switchChartTab(2)"><span class="cv-dot" style="background:var(--g)"></span>Tipo de Hora</button>
+            <button class="cv-tab" data-tab="3" onclick="switchChartTab(3)"><span class="cv-dot" style="background:var(--b)"></span>Por Escola</button>
+            <button class="cv-tab" data-tab="4" onclick="switchChartTab(4)"><span class="cv-dot" style="background:var(--o)"></span>Total Bruto</button>
+            <button class="cv-tab" data-tab="5" onclick="switchChartTab(5)"><span class="cv-dot" style="background:#7C3AED"></span>Distribuição</button>
+            <button class="cv-tab" data-tab="6" onclick="switchChartTab(6)"><span class="cv-dot" style="background:#0891B2"></span>Faixas CH</button>
+          </div>
+          <div class="cv-nav">
+            <button class="cv-arrow" onclick="switchChartTab('prev')" title="Gráfico anterior">&#8592;</button>
+            <span class="cv-counter" id="cvCounter">1 / 7</span>
+            <button class="cv-arrow" onclick="switchChartTab('next')" title="Próximo gráfico">&#8594;</button>
+          </div>
+        </div>
+
+        <!-- Corpo: apenas 1 pane visível por vez -->
+        <div class="cv-body">
+
+          <div class="cv-pane active" data-pane="0">
+            <div class="cc cv-cc">
+              <div class="cc-head">
+                <h3><span class="dot" style="background:var(--g)"></span>CH Semanal por Curso (Top 12)</h3>
+                <span class="cf-hint">clique para filtrar</span>
+              </div>
+              <div class="cc-question">Quais cursos concentram maior volume de carga horária docente neste período?</div>
+              <div class="cw cv-cw"><canvas id="cCur"></canvas></div>
+            </div>
+          </div>
+
+          <div class="cv-pane" data-pane="1">
+            <div class="cc cv-cc">
+              <div class="cc-head">
+                <h3><span class="dot" style="background:var(--o)"></span>CH Semanal por Professor – Top 10</h3>
+                <span style="font-size:10px;color:var(--m)">Coordenação não contabilizada</span>
+              </div>
+              <div class="cc-question">Quais docentes possuem a maior carga horária? Há risco de sobrecarga?</div>
+              <div class="cw cv-cw"><canvas id="cPro"></canvas></div>
+            </div>
+          </div>
+
+          <div class="cv-pane" data-pane="2">
+            <div class="cc cv-cc">
+              <h3><span class="dot" style="background:var(--g)"></span>CH por Tipo de Hora<span class="cf-hint">clique para filtrar</span></h3>
+              <div class="cc-question">Quais tipos de atividade consomem mais horas docentes — ensino, coordenação ou eventos?</div>
+              <div class="cw cv-cw"><canvas id="cTH"></canvas></div>
+            </div>
+          </div>
+
+          <div class="cv-pane" data-pane="3">
+            <div class="cc cv-cc">
+              <h3><span class="dot" style="background:var(--b)"></span>CH por Escola / Área<span class="cf-hint">clique para filtrar</span></h3>
+              <div class="cc-question">Quais escolas ou áreas concentram maior carga horária total?</div>
+              <div class="cw cv-cw"><canvas id="cEs"></canvas></div>
+            </div>
+          </div>
+
+          <div class="cv-pane" data-pane="4">
+            <div class="cc cv-cc">
+              <h3><span class="dot" style="background:var(--o)"></span>Total Bruto Mensal por Curso (Top 10)<span class="cf-hint">clique para filtrar</span></h3>
+              <div class="cc-question">Qual o custo estimado de folha por curso e qual concentra maior despesa mensal?</div>
+              <div class="cw cv-cw"><canvas id="cCo"></canvas></div>
+            </div>
+          </div>
+
+          <div class="cv-pane" data-pane="5">
+            <div class="cc cv-cc">
+              <div class="cc-head">
+                <h3><span class="dot" style="background:#7C3AED"></span>Distribuição de CH por Categoria<span class="cf-hint">clique para filtrar</span></h3>
+              </div>
+              <div class="cc-question">Como se divide o total de horas entre ensino, atividades e coordenação?</div>
+              <div class="cw cv-cw"><canvas id="cDist"></canvas></div>
+            </div>
+          </div>
+
+          <div class="cv-pane" data-pane="6">
+            <div class="cc cv-cc">
+              <div class="cc-head">
+                <h3><span class="dot" style="background:#0891B2"></span>Docentes por Faixa de CH Semanal<span class="cf-hint">clique para filtrar</span></h3>
+              </div>
+              <div class="cc-question">Qual é o perfil de carga horária dos docentes?</div>
+              <div class="cw cv-cw"><canvas id="cFaixa"></canvas></div>
+            </div>
+          </div>
+
+        </div><!-- /.cv-body -->
+      </div><!-- /.chart-viewer -->
+
+      <!-- Charts row 5 – Gauge de Ocupação Docente -->
+      <div class="sec-title" id="secGauge" style="margin-top:4px;display:none">
+        <div class="sec-dot" style="background:var(--chart-teal,#0D9488)"></div>
+        <h2>Ocupação Docente</h2>
+      </div>
+      <div id="gaugePanel" style="display:none">
+        <div class="cc-question">Qual é o nível de ocupação média do quadro docente? Onde estão os gargalos de carga?</div>
+        <div class="gauge-grid" id="gaugeGrid"></div>
+      </div>
+
+      <!-- Charts row 6 – Evolução Temporal de CH -->
+      <div class="sec-title" id="secTimeline" style="margin-top:16px;display:none">
+        <div class="sec-dot" style="background:var(--chart-blue)"></div>
+        <h2>Evolução Temporal</h2>
+      </div>
+      <div id="timelinePanel" style="display:none">
+        <div class="cc-question">Como a carga horária total evoluiu ao longo do período? Há tendência de crescimento ou redução?</div>
+        <div class="cw" style="height:240px"><canvas id="cTimeline"></canvas></div>
+      </div>
+
+      <!-- SEÇÃO: Folha Docente -->
+      <div class="sec-title" style="--st-accent:var(--orange)"><div class="sec-dot" style="background:var(--orange)"></div><h2>Folha Docente — Detalhamento</h2></div>
+
+      <!-- Demonstrativo de Cálculo -->
+      <div id="demoCal" style="display:none;background:var(--bc);border:1px solid var(--bb);border-radius:var(--rad);padding:16px;box-shadow:var(--sh)">
+        <div class="sh2" style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('opc-open')"><h2>🧮 Demonstrativo do Cálculo Salarial</h2><span style="font-size:10px;color:var(--m);margin-left:auto">▼ expandir</span><div class="opc-body opc-open">
+          <span class="pill" id="demoPill" style="background:rgba(13,170,99,.12);color:var(--g)">Fórmula IES</span></div>
+        <p style="font-size:11px;color:var(--m);margin-bottom:12px">
+          Base = CH Semanal × 4,5 × Hora Aula &nbsp;|&nbsp;
+          DSR = Base × 16,67% &nbsp;|&nbsp;
+          Hora Atividade = (Base + DSR) × 12% &nbsp;|&nbsp;
+          <strong style="color:var(--g)">Total Bruto = Base + DSR + Hora Atividade</strong>
+        </p>
+        <div class="tw" style="max-height:280px;overflow-y:auto">
+          <table style="min-width:700px">
+            <thead><tr>
+              <th>Professor</th><th>CH Sem.</th><th>CH Mensal</th>
+              <th>Hora Aula</th><th>Base</th>
+              <th>DSR 16,67%</th><th>H.Atividade 12%</th>
+              <th style="color:var(--g)">Total Bruto</th>
+            </tr></thead>
+            <tbody id="demoBody"></tbody>
+          </table>
+        </div>
+      </div></div>
+
+      <!-- Alertas -->
+      <div id="als">
+        <div class="sh2"><h2>⚠️ Alertas de Carga Horária</h2><span class="pill" id="aPill">0</span><span style="font-size:10px;color:var(--m);margin-left:6px">apenas CH de sala de aula (Ensino Superior + EAD)</span></div>
+        <div class="alist" id="aList"><div class="nd">Nenhum alerta. Todos os professores dentro do limite de 40h/semana.</div></div>
+      </div>
+
+      <!-- SEÇÃO: Dados Detalhados -->
+      <div class="sec-title" style="--st-accent:var(--purple,#7C3AED)"><div class="sec-dot" style="background:var(--purple,#7C3AED)"></div><h2>Registros Detalhados</h2></div>
+
+      <!-- Tabela -->
+      <div id="tbs">
+        <div class="sh2"><h2>📋 Atividades Docentes</h2></div>
+        <div class="ttb">
+          <input type="text" class="tsrc" id="tSrc" placeholder="🔍 Buscar em todos os campos..." oninput="(()=>{clearTimeout(window._tSFt);window._tSFt=setTimeout(tSF,150)})()" />
+          <span class="tcnt" id="tCnt">0 registros</span>
+          <button class="btn bs" style="font-size:11px;padding:5px 9px" onclick="expCSV()">⬇ CSV</button>
+        </div>
+        <div class="tw-wrap" id="twWrap">
+          <div class="tw" id="twScroll">
+            <table><thead id="tHd"></thead><tbody id="tBd"></tbody></table>
+          </div>
+        </div>
+        <div class="pg">
+          <div class="pi" id="pI">Página 1 de 1</div>
+          <div class="pc" id="pC"></div>
+        </div>
+      </div>
+
+
+      <!-- ══ ALERT ENGINE ══════════════════════════════════ -->
+      <div class="sec-title" id="secAlertEngine" style="display:none">
+        <div class="sec-dot" style="background:var(--red)"></div>
+        <h2>Alertas Automáticos</h2>
+        <span class="sec-count" id="secAlertCount"></span>
+      </div>
+      <div id="alertEnginePanel"></div>
+
+      <!-- ══ RANKING ENGINE ════════════════════════════════ -->
+      <div class="sec-title" id="secRanking" style="display:none">
+        <div class="sec-dot" style="background:var(--orange)"></div>
+        <h2>Rankings Analíticos</h2>
+      </div>
+      <div id="rankingPanel"></div>
+
+      <!-- ══ HEATMAP ═══════════════════════════════════════ -->
+      <div class="sec-title" id="secHeatmap" style="display:none">
+        <div class="sec-dot" style="background:var(--purple,#7C3AED)"></div>
+        <h2>Heatmap de Carga Horária</h2>
+      </div>
+      <div id="heatmapPanel">
+        <div class="cc-question">Onde está concentrada a carga horária? Quais docentes acumulam horas em múltiplos cursos?</div>
+        <div class="hm-container"><table class="hm-table" id="heatmapTable"></table></div>
+        <div class="hm-legend">
+          <span>Baixa</span>
+          <div class="hm-legend-bar"></div>
+          <span>Alta</span>
+          <span style="margin-left:12px;font-size:9px">Clique no nome do docente para drill-down</span>
+        </div>
+        <div class="hm-note" id="heatmapNote"></div>
+      </div>
+
+
+
+      <!-- SEÇÃO: Diagnóstico -->
+      <div class="sec-title" id="secDiag" style="display:none">
+        <div class="sec-dot" style="background:var(--chart-orange)"></div>
+        <h2>Diagnóstico da Distribuição de Carga</h2>
+      </div>
+      <div id="diagPanel" style="display:none">
+        <div class="cc-question">Como está o equilíbrio da carga entre cursos e docentes? Há sobrecargas? Quais ações a gestão pode tomar?</div>
+        <div class="diag-grid" id="diagGrid"></div>
+        <div class="diag-gini" id="diagGini">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:10px;font-weight:700;color:var(--m);text-transform:uppercase;letter-spacing:.6px">Índice de Concentração de CH (Gini Simplificado)</span>
+            <span style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:var(--t)" id="giniValue">—</span>
+          </div>
+          <div class="diag-gini-bar"><div class="diag-gini-needle" id="giniNeedle" style="left:0%"></div></div>
+          <div class="diag-gini-labels"><span>0 — Perfeito equilíbrio</span><span>0.5 — Moderado</span><span>1 — Máx. concentração</span></div>
+          <div style="font-size:11px;color:var(--m);margin-top:6px" id="giniDesc">—</div>
+        </div>
+        <div class="diag-suggestions">
+          <div class="diag-sug-title">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Sugestões Analíticas
+          </div>
+          <div class="diag-sug-list" id="diagSugs"></div>
+        </div>
+      </div>
+
+      <!-- ══ SOBRE — movido para modal "?" no header ══════ -->
+      <div id="sobrePanel" style="display:none!important;visibility:hidden;position:absolute;pointer-events:none">
+        <p style="font-size:12px;color:var(--m);line-height:1.7;max-width:700px">
+          Este painel transforma dados brutos de carga horária docente em <strong style="color:var(--t)">inteligência de gestão acadêmica</strong>,
+          permitindo que coordenadores e pró-reitores tomem decisões baseadas em evidências,
+          não em planilhas estáticas.
+        </p>
+        <div class="sobre-grid">
+          <div class="sobre-card">
+            <div class="sobre-card-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>Problema que Resolve</div>
+            <p>Relatórios manuais de carga horária consomem horas de trabalho administrativo, são propensos a erros e dificultam a visão consolidada da distribuição docente.</p>
+          </div>
+          <div class="sobre-card">
+            <div class="sobre-card-title"><svg viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>Benefícios</div>
+            <ul class="sobre-benefits">
+              <li>Redução do tempo de geração de relatórios</li>
+              <li>Visão consolidada da carga horária docente</li>
+              <li>Identificação imediata de sobrecargas</li>
+              <li>Suporte à tomada de decisão acadêmica</li>
+              <li>Alertas automáticos de desequilíbrio</li>
+            </ul>
+          </div>
+          <div class="sobre-card">
+            <div class="sobre-card-title"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Stack Tecnológico</div>
+            <div class="sobre-stack">
+              <span class="sobre-tech">Chart.js 4.4</span>
+              <span class="sobre-tech">XLSX.js</span>
+              <span class="sobre-tech">jsPDF</span>
+              <span class="sobre-tech">html2canvas</span>
+              <span class="sobre-tech">DM Sans + DM Mono</span>
+              <span class="sobre-tech">CSS Custom Properties</span>
+            </div>
+          </div>
+          <div class="sobre-card">
+            <div class="sobre-card-title"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Regras de Negócio</div>
+            <ul class="sobre-benefits">
+              <li>🟢 até 30h — carga saudável e ideal</li>
+              <li>🟡 31–39h — atenção, monitorar</li>
+              <li>🟠 40–49h — acima do recomendado</li>
+              <li>🔴 50h+ — situação crítica, ação imediata</li>
+            </ul>
+          </div>
+        </div>
+        <div class="sobre-version">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Painel de Inteligência Acadêmica — IES / DMS &nbsp;·&nbsp; v10.0
+        </div>
+      </div>
+
+      </div><!-- /#dash-operacional -->
+    </div><!-- /#dash -->
+  </main>
+</div>
+
+
+
+<!-- sobreModal movido para antes do </body> -->
+
+<!-- DRILL-DOWN MODAL -->
+<div id="drillModal" role="dialog" aria-modal="true" onclick="if(event.target===this)closeDrill()">
+  <div class="drill-box">
+    <div class="drill-hdr">
+      <div>
+        <div class="drill-title" id="drillTitle">—</div>
+        <div class="drill-breadcrumb" id="drillBreadcrumb"></div>
+      </div>
+      <button class="drill-close" onclick="closeDrill()" title="Fechar">✕</button>
+    </div>
+    <div class="drill-body" id="drillBody"></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     PÁGINA TERMOS — overlay full-screen (position:fixed, z-index:100)
+     ══════════════════════════════════════════════════════════════════ -->
+
+
+<!-- ═══ TELA DE SELEÇÃO DE VISÃO ══════════════════════════════════════ -->
+
+
+<!-- ═══════════════════════════════════════════════════
+     VISÃO EXECUTIVA — Reitoria / Direção
+════════════════════════════════════════════════════ -->
+
+
+<!-- ═══════════════════════════════════════════════════
+     VISÃO ORÇAMENTO
+════════════════════════════════════════════════════ -->
+
+
+<div id="termosPage">
+
+  <!-- Header com botão voltar -->
+  <div class="tp-header">
+    <button class="tp-back" onclick="navigateTo('dash')">
+      ← Voltar ao Dashboard
+    </button>
+    <div>
+      <div class="tp-title">📋 Gerador de Termos Aditivos</div>
+      <div class="tp-subtitle" id="tpSubtitle">Selecione os professores e gere os documentos em PDF</div>
+    </div>
+  </div>
+
+  <!-- Toolbar: busca + configs -->
+  <div class="tp-toolbar">
+    <input class="tp-search" id="tpSearch" type="text"
+      placeholder="🔍 Buscar professor..." oninput="tpFilter()"/>
+    <div class="tp-cfg">
+      <label>Semestre
+        <select id="tpPeriodo" onchange="A.periodo=this.value"></select>
+      </label>
+      <label>Data do Termo
+        <input type="date" id="tpData" onchange="A.dataTermo=this.value"/>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="tpSelectAll" onchange="tpToggleAll(this.checked)"
+          style="width:14px;height:14px;accent-color:var(--o)">
+        Selecionar todos
+      </label>
+      <span id="tpCount" style="font-size:11px;color:var(--m);white-space:nowrap"></span>
+    </div>
+  </div>
+
+  <!-- Progress bar (durante geração ZIP) -->
+  <div class="tp-progress" id="tpProgress">
+    <div class="tp-progress-fill" id="tpProgressFill" style="width:0%"></div>
+  </div>
+
+  <!-- Grid de cards -->
+  <div class="tp-grid" id="tpGrid"></div>
+
+  <!-- Footer -->
+  <div class="tp-footer">
+    <div class="tp-footer-info" id="tpSel">Nenhum professor selecionado</div>
+    <div class="tp-footer-btns">
+      <button class="btn" onclick="tpGerarSelecionados()"
+        style="background:var(--o);color:#fff;font-size:12px;font-weight:600;padding:9px 20px">
+        📄 Gerar Selecionados
+      </button>
+      <button class="btn" onclick="tpGerarTodos()"
+        style="background:var(--bc);color:var(--t);font-size:12px;font-weight:600;padding:9px 20px;border:1px solid var(--bb)">
+        📦 Gerar Todos (ZIP)
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ==================== JS ==================== -->
+<script src="js/app.js"></script>
+<!-- MODAL SOBRE ─────────────────────────────────────────────────────── -->
+<div id="sobreModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="sobre-modal-box">
+    <div class="sobre-modal-header">
+      <div class="sobre-modal-title">Sobre o DMS Dashboard</div>
+      <button class="sobre-modal-close" onclick="document.getElementById('sobreModal').classList.remove('open')">✕</button>
+    </div>
+    <!-- conteúdo clonado do sobrePanel via JS ao abrir modal -->
+    <div id="sobreModalContent"></div>
+  </div>
+</div>
+</body>
+</html>
