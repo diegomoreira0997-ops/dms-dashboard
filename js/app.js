@@ -1083,7 +1083,9 @@ const tr=(s,n)=>{s=String(s||'');return s.length>n?s.slice(0,n)+'…':s;};
  * Chamado após rfDash() em cada atualização de filtro
  */
 function rfInsights(){
-  const d = A.fil;
+  /* Painéis do Executivo (Resumo, Insights, Alertas Inteligentes) —
+     sempre com o quadro completo, sem herdar filtros da Operacional. */
+  const d = A.raw;
   if(!d.length){
     document.getElementById('insightsPanel').classList.remove('loaded');
     document.getElementById('resumoExecutivo').classList.remove('loaded');
@@ -1333,8 +1335,8 @@ function rfAlertasInteligentes(pm, nSaud, nAtenc, nAcima, nCrit, nTotal){
 /* ═══════════════════════════════════════════════════════════════
    MODULE: metadataEngine — painel informativo de dados carregados
 ═══════════════════════════════════════════════════════════════ */
-function rfMetadata(){
-  const d = A.fil;
+function rfMetadata(dSrc){
+  const d = dSrc || A.fil;
   const panel = document.getElementById('metadataPanel');
   if(!d.length){ panel.classList.remove('visible'); return; }
   panel.classList.add('visible');
@@ -3718,7 +3720,11 @@ function switchView(view) {
     mostrar(elOper);
     if (sb) sb.removeAttribute('style');
   }
-  if (view === 'orcamento')   mostrar(elOrc);
+  if (view === 'orcamento') {
+    mostrar(elOrc);
+    void elOrc.offsetHeight; // força o navegador a calcular o layout AGORA,
+                              // antes do Chart.js medir o canvas logo abaixo
+  }
 
   // Renderizar — só com dados
   if (!A.raw.length) return;
@@ -3743,8 +3749,21 @@ function switchView(view) {
 
 
 function renderExecutivo() {
-  const d  = A.fil.length ? A.fil : A.raw;
+  /* Executivo mostra sempre o quadro completo — não herda filtros de
+     análise aplicados na barra lateral da Operacional (só o Semestre/
+     Data do Termo, que é contexto global, continua valendo aqui). */
+  const d  = A.raw;
   if (!d.length) return;
+  try { rfInsights(); } catch(e){}
+  try { rfMetadata(A.raw); } catch(e){}
+  try {
+    const inf = document.getElementById('dashActionsInfo');
+    if (inf) {
+      const nProfRaw = new Set(A.raw.map(r=>r.pro).filter(Boolean)).size;
+      const nCurRaw  = new Set(A.raw.map(r=>r.curN).filter(Boolean)).size;
+      inf.textContent = A.raw.length + ' registros | ' + nProfRaw + ' docentes | ' + nCurRaw + ' cursos';
+    }
+  } catch(e){}
 
   /* Cálculos */
   const prMap  = {};
@@ -3926,6 +3945,15 @@ function _renderExecCharts(d) {
 
 /* ─── RENDERIZAÇÃO — VISÃO ORÇAMENTO ─────────────────────────────── */
 function renderOrcamento() {
+  try { rfMetadata(A.raw); } catch(e){}
+  try {
+    const inf = document.getElementById('dashActionsInfo');
+    if (inf) {
+      const nProfRaw = new Set(A.raw.map(r=>r.pro).filter(Boolean)).size;
+      const nCurRaw  = new Set(A.raw.map(r=>r.curN).filter(Boolean)).size;
+      inf.textContent = A.raw.length + ' registros | ' + nProfRaw + ' docentes | ' + nCurRaw + ' cursos';
+    }
+  } catch(e){}
   const orcData = A.orcadoDetalhado;
   const empty   = document.getElementById('orcEmpty');
   const kpiGrid = document.getElementById('orcKpiGrid');
@@ -3957,13 +3985,14 @@ function renderOrcamento() {
   if (kpiGridCH) kpiGridCH.style.display = '';
   if (chartCardCH) chartCardCH.style.display = '';
 
-  /* Calcular custo realizado por curso */
+  /* Calcular custo realizado por curso — sempre a partir do quadro
+     completo, sem herdar filtros de análise da Operacional. */
   const realCurso = {};
-  (A.fil.length ? A.fil : A.raw).forEach(r => {
+  A.raw.forEach(r => {
     if (r.curN) realCurso[r.curN] = (realCurso[r.curN] || 0) + (r.cMes || 0);
   });
   const chRealCurso = {};
-  (A.fil.length ? A.fil : A.raw).forEach(r => {
+  A.raw.forEach(r => {
     if (r.curN) chRealCurso[r.curN] = (chRealCurso[r.curN] || 0) + (r.ch || 0);
   });
 
@@ -4026,6 +4055,14 @@ function renderOrcamento() {
   const canvasOrc = el('eChartOrc');
   if (canvasOrc) {
     if (_eChartOrc) { _eChartOrc.destroy(); }
+    /* Reset defensivo: um canvas reaproveitado pode carregar uma escala/
+       transformação do desenho anterior (ex.: criado enquanto a tela
+       ainda estava com layout pequeno). Sem isso, o Chart.js às vezes
+       desenhava as barras todas amontoadas num canto. */
+    const ctxOrc = canvasOrc.getContext('2d');
+    if (ctxOrc) ctxOrc.setTransform(1, 0, 0, 1, 0, 0);
+    canvasOrc.removeAttribute('width');
+    canvasOrc.removeAttribute('height');
     _eChartOrc = new Chart(canvasOrc, {
       type: 'bar',
       data: {
@@ -4040,6 +4077,7 @@ function renderOrcamento() {
         ]
       },
       options: { ...dOpts(c),
+        resizeDelay: 200,
         layout:{padding:{top:20}},
         plugins: { ...dOpts(c).plugins,
           legend: { display: true, labels: { color: c.ticks, font: { size: 11 } } },
@@ -4056,6 +4094,10 @@ function renderOrcamento() {
   const canvasOrcCH = el('eChartOrcCH');
   if (canvasOrcCH) {
     if (_eChartOrcCH) { _eChartOrcCH.destroy(); }
+    const ctxOrcCH = canvasOrcCH.getContext('2d');
+    if (ctxOrcCH) ctxOrcCH.setTransform(1, 0, 0, 1, 0, 0);
+    canvasOrcCH.removeAttribute('width');
+    canvasOrcCH.removeAttribute('height');
     _eChartOrcCH = new Chart(canvasOrcCH, {
       type: 'bar',
       data: {
@@ -4070,6 +4112,7 @@ function renderOrcamento() {
         ]
       },
       options: { ...dOpts(c),
+        resizeDelay: 200,
         layout:{padding:{top:20}},
         plugins: { ...dOpts(c).plugins,
           legend: { display: true, labels: { color: c.ticks, font: { size: 11 } } },
